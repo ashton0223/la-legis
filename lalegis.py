@@ -1,20 +1,22 @@
 import requests, re
 
 HOUSE_URL = 'https://house.louisiana.gov/H_Reps/H_Reps_FullInfo'
-HOUSE_PARTY = 'https://house.louisiana.gov/H_Reps/H_Reps_ByParty'
-HOUSE_DISTRICT = 'https://house.louisiana.gov/H_Reps/H_Reps_ByDistrict'
+HOUSE_EXT_URL = 'https://house.louisiana.gov/H_Reps/members.aspx?ID='
 SENATE_URL = 'https://senate.la.gov/Senators_FullInfo'
-SENATE_DISTRICT = 'https://senate.la.gov/Senators_ByDistrict'
+SENATE_EXT_URL = 'https://senate.la.gov/smembers.aspx?ID='
 
-regex_string = '<span id="body_ListView1_LASTFIRSTLabel_(\\d)+">((\\w| |,|\\.|")*)<\\/span>'
+name_regex = '<span id="body_ListView1_LASTFIRSTLabel_(\\d)+">([^<]*)<\\/span>'
+district_regex = '<span id="body_ListView1_DISTRICTNUMBERLabel_(\\d)+">((\\w| |,|\\.|")*)<\\/span>'
+party_regex = '<span id="body_ListView1_PARTYAFFILIATIONLabel_(\\d)+">([^<]*)<\\/span>'
+last_name_regex = '[^ ]+'
 
 class Lawmaker:
-    def __init__(self):
-        self.name = ''
-        self.last_name = ''
-        self.district = ''
-        self.party = ''
-        self.website = ''
+    def __init__(self, name, last_name, district, party, website):
+        self.name = name
+        self.last_name = last_name
+        self.district = district
+        self.party = party
+        self.website = website
 
 class Body:
     def __init__(self, name):
@@ -30,26 +32,41 @@ class Legis:
         self.senate = Body('Senate')
     
     def create_house(self):
+        name = self.house.name
+        self.house.members = create_body(name, HOUSE_URL, HOUSE_EXT_URL)
         pass
 
     def create_senate(self):
-        sen_page = str(requests.get(SENATE_URL).content)
-        full_names = ""
+        name = self.senate.name
+        self.senate.members = create_body(name, SENATE_URL, SENATE_EXT_URL)
         pass
 
 def get_full_names(page):
     ret = []
-    res = re.findall(regex_string, page)
+    res = re.findall(name_regex, page)
     for person in res:
         ret.append(person[2])
     return ret
 
+def create_body(name, url, ext_url):
+    members = []
+    page = str(requests.get(url).content)
 
-rep_page = str(requests.get(HOUSE_URL).content)
+    mem_res = re.findall(name_regex, page)
+    dist_res = re.findall(district_regex, page)
+    party_res = re.findall(party_regex, page)
 
-#sen_regex = re.findall(regex_string, sen_page)
-rep_regex = re.findall(regex_string, rep_page)
+    for i in range(len(mem_res)):
+        name = mem_res[i][1]
+        last_name = re.match(last_name_regex, name)
+        district = dist_res[i][1]
+        party = party_res[i][1]
+        website = ext_url + district
+        members.append(Lawmaker(name, last_name, district, party, website))
+    
+    return members
 
-for rep in rep_regex:
-    print('a')
-    print(rep[1])
+l = Legis()
+l.create_house()
+l.create_senate()
+print(l.house.members[4].party)
