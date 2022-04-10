@@ -26,13 +26,13 @@ class Bill:
         (yeas, nays, absents) = get_vote_data(self.url)
         for lawmaker in lawmakers:
             last_name = lawmaker.last_name
-            if last_name in yeas:
+            if re.search(f'{last_name}[A-Z ]', yeas):
                 self.yeas.append(last_name)
                 continue
-            elif re.search(last_name, nays):
+            elif re.search(f'{last_name}[A-Z ]', nays):
                 self.nays.append(last_name)
                 continue
-            elif re.search(last_name, absents):
+            elif re.search(f'{last_name}[A-Z ]', absents):
                 self.absents.append(last_name)
 
 class Lawmaker:
