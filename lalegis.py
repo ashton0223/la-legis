@@ -26,17 +26,13 @@ class Bill:
         (yeas, nays, absents) = get_vote_data(self.url)
         for lawmaker in lawmakers:
             last_name = lawmaker.last_name
-            print(last_name)
             if last_name in yeas:
-                print('yea')
                 self.yeas.append(last_name)
                 continue
             elif re.search(last_name, nays):
-                print('nay')
                 self.nays.append(last_name)
                 continue
             elif re.search(last_name, absents):
-                print('absent')
                 self.absents.append(last_name)
 
 class Lawmaker:
@@ -52,9 +48,15 @@ class Body:
     def __init__(self, name):
         self.name = name
         self.members = []
+        self.bills = []
 
     def add_lawmaker(self, lawmaker):
         self.members.append(lawmaker)
+    
+    def add_bill(self, url):
+        new_bill = Bill(url)
+        new_bill.get_votes(self.members)
+        self.bills.append(new_bill)
 
 class Legis:
     def __init__(self):
@@ -80,6 +82,7 @@ def get_full_names(page):
 
 def create_body(name, url, ext_url):
     members = []
+    double_last_names = []
     page = str(requests.get(url).content)
 
     mem_res = re.findall(name_regex, page)
@@ -89,6 +92,20 @@ def create_body(name, url, ext_url):
     for i in range(len(mem_res)):
         name = mem_res[i][1]
         last_name = re.search(last_name_regex, name).group(0)
+
+        # Check for multiple people having the same last name
+        for i in range(len(members)):
+            if members[i].last_name == last_name:
+                print('double!',last_name)
+                double_last_names.append(last_name)
+                length = len(members[i].last_name)
+                members[i].last_name += ', ' + members[i].name[length + 2] + '.'
+                last_name += ', ' + name[length + 2] + '.'
+                continue
+        if last_name in double_last_names:
+            length = len(last_name)
+            last_name += ', ' + name[length + 2] + '.'
+            
         district = dist_res[i][1]
         party = party_res[i][1]
         website = ext_url + district
@@ -122,9 +139,10 @@ def main():
     l.create_senate()
 
     print(l.house.members[4].party)
-    test = Bill(TEST_VOTE_URL)
-    test.get_votes(l.senate.members)
-    print(len(test.yeas))
+    for member in l.senate.members:
+        print(member.last_name)
+    l.senate.add_bill(TEST_VOTE_URL)
+    print(len(l.senate.bills[0].yeas),len(l.senate.bills[0].nays))
 
 if __name__ == '__main__':
     main()
