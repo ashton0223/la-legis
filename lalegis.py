@@ -6,7 +6,7 @@ HOUSE_EXT_URL = 'https://house.louisiana.gov/H_Reps/members.aspx?ID='
 SENATE_URL = 'https://senate.la.gov/Senators_FullInfo'
 SENATE_EXT_URL = 'https://senate.la.gov/smembers.aspx?ID='
 
-# Sample Senate bill+
+# Sample Senate bill
 TEST_VOTE_URL = 'https://www.legis.la.gov/Legis/ViewDocument.aspx?d=1263950'
 
 name_regex = r'<span id="body_ListView1_LASTFIRSTLabel_(\d)+">([^<]*)<\/span>'
@@ -98,17 +98,18 @@ def create_body(name, url, ext_url):
             if members[i].last_name == last_name:
                 print('double!',last_name)
                 double_last_names.append(last_name)
-                length = len(members[i].last_name)
-                members[i].last_name += ', ' + members[i].name[length + 2] + '.'
-                last_name += ', ' + name[length + 2] + '.'
+                offset = len(members[i].last_name) + 2
+                o_name = members[i].name # doesn't go off screen
+                members[i].last_name = f'{last_name}, {o_name[offset]}.'
+                last_name = f'{last_name}, {name[offset]}.'
                 continue
         if last_name in double_last_names:
-            length = len(last_name)
-            last_name += ', ' + name[length + 2] + '.'
-            
+            offset = len(last_name) + 2
+            last_name = f'{last_name}, {name[offset]}.'
+
         district = dist_res[i][1]
         party = party_res[i][1]
-        website = ext_url + district
+        website = f'{ext_url}{district}'
         members.append(Lawmaker(name, last_name, district, party, website))
     
     return members
