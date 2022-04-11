@@ -6,6 +6,7 @@ HOUSE_EXT_URL = 'https://house.louisiana.gov/H_Reps/members.aspx?ID='
 HOUSE_SPRK_URL = 'https://house.louisiana.gov/H_Staff/H_Staff_Speaker'
 SENATE_URL = 'https://senate.la.gov/Senators_FullInfo'
 SENATE_EXT_URL = 'https://senate.la.gov/smembers.aspx?ID='
+SENATE_PR_URL = 'https://senate.la.gov/Officers'
 
 # Sample Senate bill
 TEST_VOTE_URL = 'https://www.legis.la.gov/Legis/ViewDocument.aspx?d=1263950'
@@ -16,6 +17,8 @@ party_regex = r'<span id="body_ListView1_PARTYAFFILIATIONLabel_(\d)+">([^<]*)<\/
 last_name_regex = '[^,]+'
 vote_regex = r'YEAS([^\d]*)\d{1,2}NAYS([^\d]*)\d{1,2}ABSENT([^\d]*)\d{1,2}'
 speaker_regex = r'span>([^,]+), Speaker<'
+pr_regex = r'Senator ([^<]+)<\/span'
+
 
 class Bill:
     def __init__(self, url):
@@ -68,6 +71,20 @@ class Body:
         for member in self.members:
             if member.bill_name == bill_name:
                 self.speaker = member
+                break
+    
+    # specific to the Senate
+    def add_president(self, url):
+        res = str(requests.get(url).content)
+        match = re.search(pr_regex, res)
+        name = match.group(1)
+        split = name.split(' ')
+        bill_name = split[len(split) - 1]
+        print(bill_name)
+
+        for member in self.members:
+            if member.bill_name == bill_name:
+                self.speaker = member # Named speaker for all bodies
                 break
 
     def add_bill(self, url):
@@ -163,6 +180,8 @@ def main():
     print(len(l.senate.bills[0].yeas),len(l.senate.bills[0].nays))
     l.house.add_speaker(HOUSE_SPRK_URL)
     print(l.house.speaker.name)
+    l.senate.add_president(SENATE_PR_URL)
+    print(l.senate.speaker.name)
 
 if __name__ == '__main__':
     main()
