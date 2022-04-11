@@ -3,6 +3,7 @@ from io import BytesIO
 
 HOUSE_URL = 'https://house.louisiana.gov/H_Reps/H_Reps_FullInfo'
 HOUSE_EXT_URL = 'https://house.louisiana.gov/H_Reps/members.aspx?ID='
+HOUSE_SPRK_URL = 'https://house.louisiana.gov/H_Staff/H_Staff_Speaker'
 SENATE_URL = 'https://senate.la.gov/Senators_FullInfo'
 SENATE_EXT_URL = 'https://senate.la.gov/smembers.aspx?ID='
 
@@ -14,6 +15,7 @@ district_regex = r'<span id="body_ListView1_DISTRICTNUMBERLabel_(\d)+">((\w| |,|
 party_regex = r'<span id="body_ListView1_PARTYAFFILIATIONLabel_(\d)+">([^<]*)<\/span>'
 last_name_regex = '[^,]+'
 vote_regex = r'YEAS([^\d]*)\d{1,2}NAYS([^\d]*)\d{1,2}ABSENT([^\d]*)\d{1,2}'
+speaker_regex = r'span>([^,]+), Speaker<'
 
 class Bill:
     def __init__(self, url):
@@ -25,20 +27,20 @@ class Bill:
     def get_votes(self, lawmakers):
         (yeas, nays, absents) = get_vote_data(self.url)
         for lawmaker in lawmakers:
-            last_name = lawmaker.last_name
-            if re.search(f'{last_name}[A-Z ]', yeas):
-                self.yeas.append(last_name)
+            bill_name = lawmaker.bill_name
+            if re.search(f'{bill_name}[A-Z ]', yeas):
+                self.yeas.append(bill_name)
                 continue
-            elif re.search(f'{last_name}[A-Z ]', nays):
-                self.nays.append(last_name)
+            elif re.search(f'{bill_name}[A-Z ]', nays):
+                self.nays.append(bill_name)
                 continue
-            elif re.search(f'{last_name}[A-Z ]', absents):
-                self.absents.append(last_name)
+            elif re.search(f'{bill_name}[A-Z ]', absents):
+                self.absents.append(bill_name)
 
 class Lawmaker:
-    def __init__(self, name, last_name, district, party, website):
+    def __init__(self, name, bill_name, district, party, website):
         self.name = name
-        self.last_name = last_name
+        self.bill_name = bill_name
         self.district = district
         self.party = party
         self.website = website
@@ -49,10 +51,25 @@ class Body:
         self.name = name
         self.members = []
         self.bills = []
+        self.speaker = None
 
     def add_lawmaker(self, lawmaker):
         self.members.append(lawmaker)
     
+    # specific to the House
+    def add_speaker(self, url):
+        res = str(requests.get(url).content)
+        match = re.search(speaker_regex, res)
+        name = match.group(1)
+        split = name.split(' ')
+        bill_name = split[len(split) - 1]
+        print(bill_name)
+
+        for member in self.members:
+            if member.bill_name == bill_name:
+                self.speaker = member
+                break
+
     def add_bill(self, url):
         new_bill = Bill(url)
         new_bill.get_votes(self.members)
@@ -82,7 +99,7 @@ def get_full_names(page):
 
 def create_body(name, url, ext_url):
     members = []
-    double_last_names = []
+    double_bill_names = []
     page = str(requests.get(url).content)
 
     mem_res = re.findall(name_regex, page)
@@ -91,26 +108,26 @@ def create_body(name, url, ext_url):
 
     for i in range(len(mem_res)):
         name = mem_res[i][1]
-        last_name = re.search(last_name_regex, name).group(0)
+        bill_name = re.search(last_name_regex, name).group(0)
 
         # Check for multiple people having the same last name
         for i in range(len(members)):
-            if members[i].last_name == last_name:
-                print('double!',last_name)
-                double_last_names.append(last_name)
-                offset = len(members[i].last_name) + 2
+            if members[i].bill_name == bill_name:
+                print('double!',bill_name)
+                double_bill_names.append(bill_name)
+                offset = len(members[i].bill_name) + 2
                 o_name = members[i].name # doesn't go off screen
-                members[i].last_name = f'{last_name}, {o_name[offset]}.'
-                last_name = f'{last_name}, {name[offset]}.'
+                members[i].bill_name = f'{bill_name}, {o_name[offset]}.'
+                bill_name = f'{bill_name}, {name[offset]}.'
                 continue
-        if last_name in double_last_names:
-            offset = len(last_name) + 2
-            last_name = f'{last_name}, {name[offset]}.'
+        if bill_name in double_bill_names:
+            offset = len(bill_name) + 2
+            bill_name = f'{bill_name}, {name[offset]}.'
 
         district = dist_res[i][1]
         party = party_res[i][1]
         website = f'{ext_url}{district}'
-        members.append(Lawmaker(name, last_name, district, party, website))
+        members.append(Lawmaker(name, bill_name, district, party, website))
     
     return members
 
@@ -141,9 +158,11 @@ def main():
 
     print(l.house.members[4].party)
     for member in l.senate.members:
-        print(member.last_name)
+        print(member.bill_name)
     l.senate.add_bill(TEST_VOTE_URL)
     print(len(l.senate.bills[0].yeas),len(l.senate.bills[0].nays))
+    l.house.add_speaker(HOUSE_SPRK_URL)
+    print(l.house.speaker.name)
 
 if __name__ == '__main__':
     main()
