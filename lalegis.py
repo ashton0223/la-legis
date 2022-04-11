@@ -27,9 +27,14 @@ class Bill:
         self.nays = []
         self.absents = []
     
-    def get_votes(self, lawmakers):
+    def get_votes(self, lawmakers, speaker):
         (yeas, nays, absents) = get_vote_data(self.url)
         for lawmaker in lawmakers:
+            if lawmaker == speaker:
+                if 'house' in speaker.website:
+                    lawmaker.bill_name = 'Speaker'
+                else:
+                    lawmaker.bill_name = 'President'
             bill_name = lawmaker.bill_name
             if re.search(f'{bill_name}[A-Z ]', yeas):
                 self.yeas.append(bill_name)
@@ -89,7 +94,7 @@ class Body:
 
     def add_bill(self, url):
         new_bill = Bill(url)
-        new_bill.get_votes(self.members)
+        new_bill.get_votes(self.members, self.speaker)
         self.bills.append(new_bill)
 
 class Legis:
@@ -173,15 +178,15 @@ def main():
     l.create_house()
     l.create_senate()
 
-    print(l.house.members[4].party)
-    for member in l.senate.members:
-        print(member.bill_name)
-    l.senate.add_bill(TEST_VOTE_URL)
-    print(len(l.senate.bills[0].yeas),len(l.senate.bills[0].nays))
     l.house.add_speaker(HOUSE_SPRK_URL)
     print(l.house.speaker.name)
     l.senate.add_president(SENATE_PR_URL)
     print(l.senate.speaker.name)
+
+    print(l.house.members[4].party)
+    l.senate.add_bill(TEST_VOTE_URL)
+    print(len(l.senate.bills[0].yeas),len(l.senate.bills[0].nays))
+
 
 if __name__ == '__main__':
     main()
