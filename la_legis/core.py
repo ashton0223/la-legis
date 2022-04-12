@@ -65,7 +65,7 @@ class Body:
         self.members.append(lawmaker)
     
     # specific to the House
-    def add_speaker(self, url):
+    def add_speaker(self, url=HOUSE_SPRK_URL):
         res = str(requests.get(url).content)
         match = re.search(speaker_regex, res)
         name = match.group(1)
@@ -79,7 +79,7 @@ class Body:
                 break
     
     # specific to the Senate
-    def add_president(self, url):
+    def add_president(self, url=SENATE_PR_URL):
         res = str(requests.get(url).content)
         match = re.search(pr_regex, res)
         name = match.group(1)
